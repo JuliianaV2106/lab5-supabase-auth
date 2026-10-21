@@ -1,0 +1,92 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:moviles_auth/features/auth/data/repository/auth_repository_impl.dart';
+import 'package:moviles_auth/features/auth/data/repository/profile_repository_impl.dart';
+import 'package:moviles_auth/features/auth/data/source/supabase_auth_data_source.dart';
+import 'package:moviles_auth/features/auth/data/source/supabase_profile_data_source.dart';
+import 'package:moviles_auth/features/auth/domain/entities/profile.dart';
+import 'package:moviles_auth/features/auth/domain/usecases/sign_in_usecase.dart';
+import 'package:moviles_auth/features/auth/domain/usecases/sign_out_usecase.dart';
+import 'package:moviles_auth/features/auth/domain/usecases/sign_up_usecase.dart';
+import 'package:moviles_auth/features/home/ui/bloc/home_bloc.dart';
+import 'package:moviles_auth/features/home/ui/screens/home_screen.dart';
+import 'package:moviles_auth/features/login/ui/bloc/login_bloc.dart';
+import 'package:moviles_auth/features/login/ui/screens/login_screen.dart';
+import 'package:moviles_auth/features/register/ui/bloc/register_bloc.dart';
+import 'package:moviles_auth/features/register/ui/screens/register_screen.dart';
+import 'package:moviles_auth/theme/app_theme.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://exhsjnflvznaiopojmbj.supabase.co',
+    publishableKey: 'sb_publishable_L331iiX-vkGJZ6gvsFoEQg_4GdnPOWw',
+  );
+
+  runApp(const App());
+}
+
+/// Root widget that declares the theme and the named routes.
+class App extends StatelessWidget {
+  const App({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Moviles Auth',
+      debugShowCheckedModeBanner: false,
+      theme: buildTheme(),
+      initialRoute: '/login',
+      routes: {
+        '/login': (_) => BlocProvider(
+          create: (_) => LoginBloc(
+            SignInUseCase(
+              AuthRepositoryImpl(
+                SupabaseAuthDataSource(Supabase.instance.client),
+              ),
+              ProfileRepositoryImpl(
+                SupabaseProfileDataSource(Supabase.instance.client),
+              ),
+            ),
+          ),
+          child: const LoginScreen(),
+        ),
+        '/register': (_) => BlocProvider(
+          create: (_) => RegisterBloc(
+            SignUpUseCase(
+              AuthRepositoryImpl(
+                SupabaseAuthDataSource(Supabase.instance.client),
+              ),
+              ProfileRepositoryImpl(
+                SupabaseProfileDataSource(Supabase.instance.client),
+              ),
+            ),
+          ),
+          child: const RegisterScreen(),
+        ),
+        '/home': (context) {
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as ({Profile profile, String email});
+          return BlocProvider(
+            create: (_) => HomeBloc(
+              SignOutUseCase(
+                AuthRepositoryImpl(
+                  SupabaseAuthDataSource(Supabase.instance.client),
+                ),
+              ),
+            ),
+            child: HomeScreen(
+              username: args.profile.username,
+              fullName: args.profile.fullName,
+              email: args.email,
+            ),
+          );
+        },
+      },
+    );
+  }
+}
